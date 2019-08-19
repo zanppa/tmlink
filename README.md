@@ -1,6 +1,6 @@
 # TMLink
-TMLink is a set of tools (clients, servers) to allow zero configuration remote access of
-a gadget to a computer. It is currently only a prototype/proof-of-concept and as such needs lots of 
+TMLink is a set of tools (clients, servers) to allow zero configuration remote access to
+a gadget from a computer. It is currently only a prototype/proof-of-concept and as such needs lots of 
 manual setup to get to work properly.
 
 Raspberry PI Zero W has been used as the gadget, and laptop running Devuan Linux as the host computer.
