@@ -24,7 +24,7 @@ from pyupnp.services import Service, register_action,\
 class TmClientProfile(Service):
     version = (1, 0)
     serviceType = "urn:schemas-upnp-org:service:TmClientProfile:1"
-    serviceId = "urn:upnp-org:serviceId:TmClientProfile1"
+    serviceId = "urn:upnp-org:serviceId:TmClientProfile"
 
     actions = {
         'GetMaxNumProfiles': [

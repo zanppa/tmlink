@@ -39,7 +39,7 @@ from pyupnp.upnp import upnpError
 class TmApplicationServer(Service):
     version = (1, 0)
     serviceType = "urn:schemas-upnp-org:service:TmApplicationServer:1"
-    serviceId = "urn:upnp-org:serviceId:TmApplicationServer1"
+    serviceId = "urn:upnp-org:serviceId:TmApplicationServer"
 
     actions = {
         'GetApplicationList': [

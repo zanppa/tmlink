@@ -27,7 +27,7 @@ from pyupnp.services import Service, register_action,\
 class TmNotificationServer(Service):
     version = (1, 0)
     serviceType = "urn:schemas-upnp-org:service:TmNotificationServer:1"
-    serviceId = "urn:upnp-org:serviceId:TmNotificationServer1"
+    serviceId = "urn:upnp-org:serviceId:TmNotificationServer"
 
     actions = {
         'GetNotification': [
