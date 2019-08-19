@@ -90,64 +90,64 @@ Some parts work with python 2.7 and some parts with python 3...
 
 ## Server status
 ### Connection
-[x] USB gadget configuration (static or with ConfigFS)
-[ ] Bluetooth PAN network interface (and pairing, connection)
-[ ] WLAN access point
+- [x] USB gadget configuration (static or with ConfigFS)
+- [ ] Bluetooth PAN network interface (and pairing, connection)
+- [ ] WLAN access point
 
 ### Service discovery
-[x] SSDP server
-[x] UPnP server with service descriptors, actions
-[x] Some actions can be invoked
-[ ] All actions can be invoked
-[ ] Errors are reported properly
-[x] Can bind the server(s) to a selected interface
-[ ] Support for multiple simultaneous connections (different interfaces)
+- [x] SSDP server
+- [x] UPnP server with service descriptors, actions
+- [x] Some actions can be invoked
+- [ ] All actions can be invoked
+- [ ] Errors are reported properly
+- [x] Can bind the server(s) to a selected interface
+- [ ] Support for multiple simultaneous connections (different interfaces)
 
 ### Commanding
-[x] Applications can be listed
-[x] Applications can be launched
-[x] Applications can be terminated
-[x] Application status can be queried
-[ ] Application status is correct, updated automatically (e.g. if it terminated by itself)
+- [x] Applications can be listed
+- [x] Applications can be launched
+- [x] Applications can be terminated
+- [x] Application status can be queried
+- [ ] Application status is correct, updated automatically (e.g. if it terminated by itself)
 
 ### Screen sharing
-[x] VNC server can be launched and terminated on selected (one) interface
-[x] VNC server reports its address
-[x] Applications can be launched on the VNC server
+- [x] VNC server can be launched and terminated on selected (one) interface
+- [x] VNC server reports its address
+- [x] Applications can be launched on the VNC server
 
 ### RTP
-[ ] RTP stream(s) can be started
-[ ] Audio is routed to these streams automatically
+- [ ] RTP stream(s) can be started
+- [ ] Audio is routed to these streams automatically
 
 ### Other TODO items
-[X] PyUPnP: Fork in github and commit changes there
-[X] SSDP: Pass the interface IP where the UPnP server is listening instead of using default
-[ ] UPnP: in upnp.py e.g. render_POST method(s), allow raising exception that will return an UPnP error instead
- * [X] Create upnpException that allows defining the error code and error description
- * [X] Catch it when calling the func(**kwargs)
- * [X] return 500 internal server error (request.setResponseCode(500)) and correct SOAP/XML response
-[X] UPnP: Fix the method_POST so that buildSOAP is e.g. buildSOAP(method='%sResponse'%name, kw=result, namespace=self.service.serviceType)
- * That way the namespace will indicate correct service, which seems to be required by some implementations
-[ ] Add a way to return errors through D-BUS, e.g. return tuple (errorCode, value)
-[ ] Implement notifications (over D-BUS, over UPnP)
+- [X] PyUPnP: Fork in github and commit changes there
+- [X] SSDP: Pass the interface IP where the UPnP server is listening instead of using default
+- [ ] UPnP: in upnp.py e.g. render_POST method(s), allow raising exception that will return an UPnP error instead
+    - [X] Create upnpException that allows defining the error code and error description
+    - [X] Catch it when calling the func(**kwargs)
+    - [X] return 500 internal server error (request.setResponseCode(500)) and correct SOAP/XML response
+- [X] UPnP: Fix the method_POST so that buildSOAP is e.g. buildSOAP(method='%sResponse'%name, kw=result, namespace=self.service.serviceType)
+    - That way the namespace will indicate correct service, which seems to be required by some implementations
+- [ ] Add a way to return errors through D-BUS, e.g. return tuple (errorCode, value)
+- [ ] Implement notifications (over D-BUS, over UPnP)
 
 ## Client status
 ### UPnP client
-[X] Can search for device
-[X] Can list applications
-[X] Can launch applications
- * [X] Can launch VNC client for each individual VNC URI
- * [ ] Can launch RTP client for each RTP stream URI
-[X] Can terminate applications
+- [X] Can search for device
+- [X] Can list applications
+- [X] Can launch applications
+    - [X] Can launch VNC client for each individual VNC URI
+    -[ ] Can launch RTP client for each RTP stream URI
+- [X] Can terminate applications
 
 ### RTP client
-[X] Send one-byte packet to server
-[X] Automatically identify stream type and select decoding parameters
-[X] Read UDP RTP stream and play
+- [X] Send one-byte packet to server
+- [X] Automatically identify stream type and select decoding parameters
+- [X] Read UDP RTP stream and play
 
 ### VNC client
-[X] Uses standard client
-[ ] Terminal Mode extension in VNC client (WIP in separate repository)
+- [X] Uses standard client
+- [ ] Terminal Mode extension in VNC client (WIP in separate repository)
 
 ## License
 Copyright (C) 2019 Lauri Peltonen
