@@ -18,8 +18,11 @@ some UPnP implementations, I don't use those yet). See `configs/http/` for more 
 ## Running
 First you need to configure the ethernet gadget: `sudo sh create_gadget.sh´.
 
-If you want to use the RTP server for audio playback, you need to create the ALSA loopback device: 
+If you want to use the RTP server for audio playback, you need to create the ALSA loopback device, 
+which should create a virtual sound card #1: 
 `sudo sh create_snd_loopback.sh`.
+Any local applications can play music to `hw:1,0,0` and record from `hw:1,0,1`. The first one will be sent 
+to client and any audio the client plays will be available in the latter.
 
 Then, you can just launch the servers: `sh launch_servers.sh`. The ApplicationServer goes to background 
 and the UPnP server stays on foreground.

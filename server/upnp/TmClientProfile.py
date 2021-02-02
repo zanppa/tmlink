@@ -58,16 +58,29 @@ class TmClientProfile(Service):
 
     unused_profile_ids = EventProperty('UnusedProfileIDs')
 
+
+    # Internal variables
+    maxNumProfiles = 1
+
     @register_action('GetMaxNumProfiles')
     def getMaxNumProfiles(self):
-        return 1	# TODO: Currently hard-coded to default value
+        return self.maxNumProfiles
 
     @register_action('SetClientProfile')
-    def getCurrentConnectionIDs(self, profileID, clientProfile):
+    def setClientProfile(self, profileID, clientProfile):
 	# TODO: Update the profile XML with the provided profile, return the new union
-        raise NotImplementedError()
+        if profileID < 0 or profileID >= self.maxNumProfiles:
+            raise upnpError(830, 'Invalid Profile ID')
+        # raise upnpError(825, 'Invalid Profile') # If profile did not match schema
+        raise upnpError(701, 'Operation Rejected') # TODO: Change when function is implemented
 
     @register_action('GetClientProfile')
     def getClientProfile(self, profileID):
 	# TODO: Return XML formatted profile
-        raise NotImplementedError()
+        if profileID < 0 or profileID >= self.maxNumProfiles:
+            raise upnpError(830, 'Invalid Profile ID')
+        raise upnpError(701, 'Operation Rejected') # TODO: Change when function is implemented
+
+
+    # TODO: External handling (D-BUS?) for client connections and
+    # assigning profile IDs etc

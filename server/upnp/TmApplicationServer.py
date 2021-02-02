@@ -115,59 +115,41 @@ class TmApplicationServer(Service):
         Service.__init__(self)
 
         # Initialize D-BUS connection to the application server
-        #self.dbusConnection = client.connect(reactor, 'session')
-        #self.appServer = self.dbusConnection.getRemoteObject('org.tmlink.ApplicationServer', '/org/tmlink/ApplicationServer')
-
         self.dbus = dbus.SessionBus()
         self.session = self.dbus.get_object('org.tmlink', '/org/tmlink')
         self.iface = dbus.Interface(self.session, 'org.tmlink.ApplicationServer')
 
     @register_action('GetApplicationList')
     def getApplicationList(self, appListingFilter, profileID):
-        #Logr.debug("GetApplicationList...")
-        #return {'AppListing': self.appList.dumps()}
-        #return {'AppListing': self.appServer.callRemote('ApplicationList')}
         return {'AppListing': self.iface.ApplicationList()}
-        #raise NotImplementedError()
 
     @register_action('LaunchApplication')
     def launchApplication(self, appID, profileID):
-        #Logr.debug("launchApplication")
-        #return {'AppURI': self.appList.launch(appID)}
-        #return {'AppURI': self.appServer.callRemote('LaunchApplication', appID)}
         return {'AppURI': self.iface.LaunchApplication(appID)}
-        #raise NotImplementedError()
 
     @register_action('TerminateApplication')
     def terminateApplication(self, appID, profileID):
-        #return {'TerminationResult': self.appList.terminate(appID)}
         return {'TerminationResult': self.iface.TerminateApplication(appID)}
-        #raise NotImplementedError()
 
     @register_action('GetApplicationStatus')
     def getApplicationStatus(self, appID):
         return {'AppStatus': self.iface.GetApplicationStatus(appID)}
-        #raise NotImplementedError()
 
     @register_action('GetApplicationCertificateInfo')
     def getApplicationCertificateInfo(self, appID):
-        raise upnpError(815, 'Device Locked')
-        #raise NotImplementedError()
+        raise upnpError(815, 'Device Locked') # TODO: Implement
 
     @register_action('GetCertifiedApplicationsList')
     def getCertifiedApplicationsList(self, appCertFilter, profileID):
-        raise upnpError(815, 'Device Locked')
-        #raise NotImplementedError()
+        raise upnpError(815, 'Device Locked') # TODO: Implement
 
     @register_action('GetAppCertificationStatus')
     def getAppCertificationStatus(self, appID, appCertFilter, profileID):
-        raise upnpError(815, 'Device Locked')
-        #raise NotImplementedError()
+        raise upnpError(815, 'Device Locked') # TODO: Implement
 
     @register_action('SetAllowedApplicationsList')
     def setAllowedApplicationsList(self, allowedAppListNonRestricted, allowedAppListRestricted, profileID):
-        raise upnpError(815, 'Device Locked')
-        #raise NotImplementedError()
+        raise upnpError(815, 'Device Locked') # TODO: Implement
 
 
 

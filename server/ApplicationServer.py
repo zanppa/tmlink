@@ -59,9 +59,9 @@ class Application:
         self.appID = Application.nextAppID
         Application.nextAppID += 1
 
-        self.autoLaunch = False	# Launch automatically on startup
-        self.noTerminate = False # Do not allow terminate, just send to background
-        self.noListing = False # Do not list this in the app listing (e.g. background servers)
+        self.autoLaunch = False	# True = Launch automatically on startup
+        self.noTerminate = False # True = Do not allow terminate, just send to background
+        self.noListing = False # True = Do not list this in the app listing (e.g. background servers)
 
         self.proc = None
 
@@ -152,13 +152,17 @@ class Application:
         return self.xmlString
 
     def launch(self, command, environ=None):
+        if self.proc:	# Already running
+            self.foreground()
+            return self.uri
+
         print('Launching: {}'.format(' '.join(x for x in command)))
         self.proc = subprocess.Popen(command, preexec_fn=os.setsid, env=environ)
         self.status = 'Foreground'
         return self.uri
 
     def terminate(self):
-        if not self.proc:
+        if not self.proc or self.noTerminate:
             return False
 
         #self.proc.terminate()
@@ -179,10 +183,12 @@ class Application:
         return False
 
     def foreground(self):
+        # TODO: Use wmctrl or xdotool to bring the window to foreground (if PID is stored in data)
         # Program is now on foreground
         self.status = 'Foreground'
 
     def background(self):
+        # TODO: Use wmctrl or xdotool to send the window to background (if PID is stored in data)
         self.status = 'Background'
 
     def getURI(self):
@@ -234,7 +240,7 @@ class VNCApplication(Application):
 
 
 
-class RTPApplication(Application):
+class RTPServerApplication(Application):
     def __init__(self, host):
         #super(RTPApplication, self).__init__()
         Application.__init__(self, host)
@@ -252,7 +258,30 @@ class RTPApplication(Application):
         #self.createXML()
 
     def launch(self):
-        return ''
+        return Application.launch(self, ['python3', 'RTPServer.py', '--interface={}'.format(self.host), '--port={}'.format(self.port)])
+
+
+class RTPClientApplication(Application):
+    def __init__(self, host):
+        #super(RTPApplication, self).__init__()
+        Application.__init__(self, host)
+
+        self.port = 12346	# TODO: Change to correct one
+
+        self.protocolID = 'RTP'
+        self.format = '99'
+        self.hasDisplay = False
+        self.hasAudio = True
+        self.audioType = 'application'
+        self.hasAppInfo = True
+        self.uri = 'rtp://{}:{}'.format(self.host, self.port)
+
+        self.stream_type = 'application/x-rtp, media=audio, format=S32LE, layout=interleaved, clock-rate=48000, channels=2, payload=99'
+
+        #self.createXML()
+
+    def launch(self):
+        return Application.launch(self, ['gst-launch-1.0', 'udpsrc', 'port={}'.format(self.port), 'caps=\"{}\"'.format(self.stream_type), '!', 'rtpL16depay', '!', 'alsasink device=hw:1,1,1'])
 
 
 class GenericApplication(Application):
@@ -313,6 +342,14 @@ class ApplicationServer(dbus.service.Object):
         self.createXML()
         return self.xmlTree
 
+    @dbus.service.method('org.tmlink.ApplicationServer', in_signature='b', out_signature='b')
+    def KillServer(self, killApps):
+        if killApps:
+            self.terminateAll()
+        glib.MainLoop.quit()
+        return True
+
+
     @dbus.service.method('org.tmlink.ApplicationServer', in_signature='', out_signature='s')
     def ApplicationList(self):
         self.xmlString = ElementTree.tostring(self.dump(), encoding='UTF-8', method='xml', xml_declaration=True)
@@ -320,15 +357,22 @@ class ApplicationServer(dbus.service.Object):
 
     @dbus.service.method('org.tmlink.ApplicationServer', in_signature='s', out_signature='s')
     def LaunchApplication(self, appID):
-        appID = int(appID, 16)
+        try:
+            appID = int(appID, 16)
+        except:
+            # TODO: Throw or something to get server error?
+            # 810 = Bad AppID
+            return ''
+
         if appID in self.apps:
             if self.apps[appID].launch():
+                self.ForegroundApplication(appID)	# Make it fg and others bg
                 return self.apps[appID].uri
             else:
-                # TODO: Throw or something to get server error?
-                # 810 = Bad AppID
-                # 813 = Launch failed
-                return ''
+                return '' # Todo: throw or something for 813 = Launch Failed
+        # TODO: Throw or something to get server error?
+        # 810 = Bad AppID
+        return ''
 
     @dbus.service.method('org.tmlink.ApplicationServer', in_signature='s', out_signature='b')
     def TerminateApplication(self, appID):
@@ -398,7 +442,7 @@ class DefaultApplicationList():
         server.addApplication(self.VNCapp)
 
         # RTP server (audio out)
-        self.RTPserver = RTPApplication(host_address)
+        self.RTPserver = RTPServerApplication(host_address)
         self.RTPserver.appCategory = '0xF0000001'	# Server functionality
         self.RTPserver.name = 'Audio out'
         self.RTPserver.audioType = 'all'
@@ -406,7 +450,7 @@ class DefaultApplicationList():
         server.addApplication(self.RTPserver)
 
         # RTP sink (audio in)
-        self.RTPclient = RTPApplication(host_address)
+        self.RTPclient = RTPClientApplication(host_address)
         self.RTPclient.appCategory = '0xF0000002'	# Client functionality
         self.RTPclient.name = 'Audio in'
         self.RTPclient.audioType = 'all'
@@ -421,6 +465,10 @@ class DefaultApplicationList():
         self.genapp2 = GenericApplication(['rxvt'], self.VNCapp.uri, 1)
         self.genapp2.name = 'Terminal'
         server.addApplication(self.genapp2)
+
+        self.genapp3 = GenericApplication(['sh', 'play_music.sh'], self.RTPserver.uri, 0)
+        self.genapp3.name = 'Play music'
+        server.addApplication(self.genapp3)
 
 
 
