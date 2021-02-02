@@ -15,11 +15,11 @@ import sys
 
 
 PAYLOADS = {
-    99: '\"audio/x-raw, layout=interleaved, media=audio, clock-rate=48000, encoding-name=L16, encoding-params=2, channels=2, payload=99\"',
+    99: 'audio/x-raw, layout=(string)interleaved, media=(string)audio, clock-rate=(int)48000, encoding-name=(string)L16, encoding-params=(string)2, channels=(int)2, payload=(int)99',
     }
 
 RESAMPLE = {
-    99: '\"audio/x-raw, rate=48000\"',
+    99: 'audio/x-raw, rate=48000',
     }
 
 #RTP_COMMAND = 'gst-launch-1.0 -v alsasrc device=hw:1,1,0 ! decodebin ! audioresample ! \'audio/x-raw, rate=48000' ! audioconvert ! 'audio/x-raw, layout=(string)interleaved, media=(string)audio, clock-rate=(int)48000, encoding-name=(string)L16, encoding-params=(string)2, channels=(int)2, payload=(int)0\' ! rtpL16pay  ! udpsink host={} port={}'
@@ -38,7 +38,7 @@ class RTPServer():
     def launch(self):
         """Launch the listening server, return the stream address"""
 
-        # Open a random port
+        # Open the port for listening for client
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind((self.interface, self.port))
         self.socket.setblocking(0)
@@ -63,6 +63,9 @@ class RTPServer():
             readable, writable, exceptional = select.select([self.socket], [], [], timeout)
 
             if self.socket in readable:
+                if verbose:
+                    print 'Byte received from client'
+
                 # Data received, read the byte and discard
                 data, addr = self.socket.recvfrom(1)
 
@@ -77,7 +80,9 @@ class RTPServer():
                 cmd = ['gst-launch-1.0']
                 if verbose:
                     cmd.append('-v')
-                cmd.extend(['alsasrc', 'device={}'.format(self.device), '!', 'decodebin', '!', 'audioresample', '!', RESAMPLE[type], '!', 'audioconvert', '!', PAYLOADS[type], '!', 'rtpL16pay', 'pt={}'.format(payloadType), '!', 'udpsink', 'host={}'.format(self.clientAddress), 'port={}'.format(clientPort), 'bind-port={}'.format(stream_port)])
+                cmd.extend(['alsasrc', 'device={}'.format(self.device), '!', 'decodebin', '!', 'audioresample', '!', RESAMPLE[type], '!', 'audioconvert', '!', PAYLOADS[type], '!', 'rtpL16pay', 'pt=99', '!', 'udpsink', 'host={}'.format(self.clientAddress), 'port={}'.format(self.clientPort)])
+                if stream_port != 0:
+                    cmd.append('bind-port={}'.format(stream_port))
 
                 # Launch the streaming server
                 # TODO: Should not use shell, instead use some smarter way to handle the arguments?
