@@ -258,7 +258,7 @@ class RTPServerApplication(Application):
         #self.createXML()
 
     def launch(self):
-        return Application.launch(self, ['python3', 'RTPServer.py', '--interface={}'.format(self.host), '--port={}'.format(self.port)])
+        return Application.launch(self, ['python', 'RTPServer.py', '--interface={}'.format(self.host), '--port={}'.format(self.port)])
 
 
 class RTPClientApplication(Application):

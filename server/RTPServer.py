@@ -52,13 +52,14 @@ class RTPServer():
         return 'rtp://{}:{}'.format(self.address, self.port)
 
 
-    def run(self, type=99, timeout=10, stream_port=0, verbose=False):
+    def run(self, uri, type=99, timeout=10, stream_port=0, verbose=False):
         """Wait for packet to indicate destination address and port and start stream"""
 
         if not type in RESAMPLE or not type in PAYLOADS:
             print('Unknown payload (stream) type: {}'.format(type))
             return -1
 
+        print uri
         if self.socket and not self.clientAddress:
             readable, writable, exceptional = select.select([self.socket], [], [], timeout)
 
@@ -102,7 +103,7 @@ def main():
     parser.add_argument('-i', '--interface', help='Interface (address) to use', default='192.168.10.1')
     parser.add_argument('-p', '--port', help='Port to listen on', default=5000, type=int)
     parser.add_argument('-P', '--stream-port', help='Port from which to stream out', default=0, type=int)
-    parser.add_argument('-T', '--timeout', help='Timeout waiting for connection (s)', default=10, type=int)
+    parser.add_argument('-T', '--timeout', help='Timeout waiting for connection (s)', default=60, type=int)
     parser.add_argument('-d', '--device', help='ALSA sound device to use', default='hw:1,1,0')
     parser.add_argument('-t', '--type', help='Stream (RTP payload) type', default=99, type=int, choices=supportedPayloads)
     parser.add_argument('-v', '--verbose', help='Verbose output', action='store_true')
@@ -117,8 +118,8 @@ def main():
     verbose=args.verbose
 
     rtpServer = RTPServer(interface, port, device)
-    print(rtpServer.launch())
-    rtpServer.run(type, timeout, stream_port, verbose)
+    uri = rtpServer.launch()
+    rtpServer.run(uri, type, timeout, stream_port, verbose)
 
 
 if __name__ == '__main__':
