@@ -11,11 +11,6 @@ import time
 
 import subprocess
 
-
-# TODO: Command line parameters?
-listenPort = 5000
-listenInterface = '192.168.10.21'
-
 # Send a single byte start packet to the host
 def sendStartPacket(host, port, interface=None, local_port=0):
 	if not interface:
@@ -28,7 +23,7 @@ def sendStartPacket(host, port, interface=None, local_port=0):
 	try:
 		sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		sock.bind((interface, local_port))
-		sock.connect((host, 1))
+		sock.connect((host, port))
 	except:
 		print('Could not open socket or remote host unreachable on given (or any) interface')
 		sock.close()
@@ -74,7 +69,8 @@ def detectPayloadType(interface, port, timeout=5, packets=3):
 			# Figure out the RTP stream type
 			# The payload (stream type) is the low 7 bits of 2nd byte
 			oldPayload = payload
-			payload = ord(data[1]) & 0x7F
+			#payload = ord(data[1]) & 0x7F
+			payload = data[1] & 0x7F
 
 			if payload != oldPayload:
 				votes = 1	# Require X times the same value to be sure
@@ -90,8 +86,8 @@ def detectPayloadType(interface, port, timeout=5, packets=3):
 			if time.time() > timeout:
 				break
 
-			if sock:
-				sock.close()
+	if sock:
+		sock.close()
 
 	return selectedPayload
 
@@ -119,7 +115,7 @@ def launchRTPClient(interface, port, stream_type, verbose=0):
 	cmd = ['gst-launch-1.0']
 	if verbose:
 		cmd.append('-v')
-	cmd.extend(['udpsrc', 'port={}'.format(listenPort), 'caps=\"{}\"'.format(stream_types[stream_type]), '!', 'rtpL16depay', '!', 'playsink'])
+	cmd.extend(['udpsrc', 'port={}'.format(port), 'caps=\"{}\"'.format(stream_types[stream_type]), '!', 'rtpL16depay', '!', 'playsink'])
 
 	print(' '.join(x for x in cmd))
 	return subprocess.call(cmd)
@@ -134,7 +130,7 @@ def main():
 	args = parser.parse_args()
 
 	host = args.host
-	port = args.port
+	port = int(args.port)
 
 	interface = args.interface
 	local_port = args.local_port
