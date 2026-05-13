@@ -21,6 +21,16 @@ This is very very preliminary for testing purposes only.
 
 Tested on Devuan Excalibur.
 
+## RTPClient
+
+The RTP client launcher can use either GST python bindings from `python3-gi` package
+or alternatively if that fails, it tries to launch `gst-launcher-1.0` which is 
+intended for debuging only. To use the former method you may need to install that 
+package and create the Python venv with `python -m venv --system-site-packages venv`. 
+This makes the system installed gi bindings visible in the venv.
+
+Note that `gst-launcher-1.0` version seems to launch/fork background, so it will not 
+close cleanly when the client is stopped but must be terminated separately.
 
 ## License
 Copyright (C) 2019, 2026 Lauri Peltonen

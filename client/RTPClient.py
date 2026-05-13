@@ -119,18 +119,49 @@ def launchRTPClient(interface, port, stream_type, verbose = False, quiet = True)
 		print('Unknown payload type: {}'.format(stream_type))
 		return None
 
-	# Launch gstreamer
-	cmd = ['gst-launch-1.0']
-	if verbose:
-		print('Verbose mode')
-		cmd.append('-v')
-	if quiet:
-		print('Quiet mode')
-		cmd.extend(['-q', '--no-position'])
-	cmd.extend(['udpsrc', 'port={}'.format(port), 'caps=\"{}\"'.format(stream_types[stream_type]), '!', 'rtpL16depay', '!', 'playsink'])
+	# Try to build the pipeline via GStreamer bindings
+	try:
+		import gi
+		gi.require_version('Gst', '1.0')
+		from gi.repository import Gst, GObject
 
-	print(' '.join(x for x in cmd))
-	return subprocess.call(cmd)
+		Gst.init(None)
+
+		# Create the pipeline
+		pipeline_str = 'udpsrc port={} caps=\"{}\" ! rtpL16depay ! playsink'.format(port, stream_types[stream_type])
+		pipeline = Gst.parse_launch(pipeline_str)
+		pipeline.set_state(Gst.State.PLAYING)
+
+		# Listen for messages
+		bus = pipeline.get_bus()
+		terminate = False
+		while not terminate:
+			msg = bus.timed_pop_filtered(Gst.SECOND, Gst.MessageType.ERROR | Gst.MessageType.EOS)
+			if not msg:
+				continue
+			# Only error or end-of-stream messages should get this far -> they terminate
+			terminate = True
+		pipeline.set_state(Gst.State.NULL)
+		return 0
+
+
+	except Exception as e:
+		# If that fails, launch the "debuging app"
+		print('Could not build GST pipeline: {}'.format(e))
+		print('Trying gst-launch-1.0')
+
+		# Launch gstreamer
+		cmd = ['gst-launch-1.0']
+		if verbose:
+			print('Verbose mode')
+			cmd.append('-v')
+		if quiet:
+			print('Quiet mode')
+			cmd.extend(['-q', '--no-position'])
+		cmd.extend(['udpsrc', 'port={}'.format(port), 'caps=\"{}\"'.format(stream_types[stream_type]), '!', 'rtpL16depay', '!', 'playsink'])
+
+		print(' '.join(x for x in cmd))
+		return subprocess.call(cmd)
 
 
 def main():
