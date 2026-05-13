@@ -161,6 +161,8 @@ while True:
 			if (not uri in rtp_clients) or rtp_clients[uri].poll() is None:
 				# New URI or the existing client has terminated
 				cmd = ['python3', 'RTPClient.py', '{}'.format(uri_part.hostname), '{}'.format(uri_part.port)]
+				if 'format' in applications[ID]:
+					cmd.append('-t {}'.format(applications[ID]['format']))
 				print('Launching: {}'.format(' '.join(x for x in cmd)))
 				proc = subprocess.Popen(cmd)
 				rtp_clients[uri] = proc
@@ -180,3 +182,11 @@ while True:
 		break
 
 	print
+
+for uri in vnc_clients:
+	vnc_clients[uri].terminate()
+	#vnc_clients[uri].kill()
+
+for uri in rtp_clients:
+	rtp_clients[uri].terminate()
+	#rtp_clients[uri].kill()
