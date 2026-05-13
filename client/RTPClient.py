@@ -42,7 +42,7 @@ def sendStartPacket(host, port, interface=None, local_port=0):
 
 
 # Try to detect RTP payload type, return payload (int) or None on error
-def detectPayloadType(interface, port, timeout=5, packets=3):
+def detectPayloadType(interface, port, timeout=5, packets=0):
 	# Create UDP socket
 	try:
 		sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -59,7 +59,7 @@ def detectPayloadType(interface, port, timeout=5, packets=3):
 	timeout += time.time()
 	while True:
 		recv = select.select([sock], [], [], 1)	# 1 sec timeout
-		if recv:
+		if any(recv):
 			try:
 				data, address = sock.recvfrom(1024)	# TODO: How many bytes??
 			except socket.timeout:
@@ -79,6 +79,7 @@ def detectPayloadType(interface, port, timeout=5, packets=3):
 
 			if votes > packets:
 				selectedPayload = payload
+			#selectedPayload = payload
 
 			if selectedPayload is not None:
 				break
@@ -106,7 +107,7 @@ stream_types = {
 
 
 # Launch the RTP client. Blocks on success, returns client return code or None on error
-def launchRTPClient(interface, port, stream_type, verbose=0):
+def launchRTPClient(interface, port, stream_type, verbose = False, quiet = True):
 	if not stream_type in stream_types:
 		print('Unknown payload type: {}'.format(stream_type))
 		return None
@@ -114,7 +115,11 @@ def launchRTPClient(interface, port, stream_type, verbose=0):
 	# Launch gstreamer
 	cmd = ['gst-launch-1.0']
 	if verbose:
+		print('Verbose mode')
 		cmd.append('-v')
+	if quiet:
+		print('Quiet mode')
+		cmd.extend(['-q', '--no-position'])
 	cmd.extend(['udpsrc', 'port={}'.format(port), 'caps=\"{}\"'.format(stream_types[stream_type]), '!', 'rtpL16depay', '!', 'playsink'])
 
 	print(' '.join(x for x in cmd))
@@ -127,6 +132,9 @@ def main():
 	parser.add_argument('port', help='Remote host port')
 	parser.add_argument('-i', '--interface', type=str, help='Force network interface (IP) to use (default=auto)', default=None)
 	parser.add_argument('-p', '--local_port', type=int, help='Force local port to use (default=random)', default=0)
+	parser.add_argument('-t', '--stream_type', type=int, help='Define stream type (e.g. 99) instead of autodetecting', default=0)
+	parser.add_argument('-v', '--verbose', help='Verbose output', action='store_true')
+	parser.add_argument('-q', '--non-quiet', help='Non-quiet mode, output normal amount of text', action='store_false')
 	args = parser.parse_args()
 
 	host = args.host
@@ -139,13 +147,13 @@ def main():
 	if not interface:
 		return
 
-	stream_type = detectPayloadType(interface, local_port)
+	stream_type = args.stream_type or detectPayloadType(interface, local_port)
 	if not stream_type:
 		print('Stream type was not detected, timeout')
 	else:
 		print('Payload type: {}'.format(stream_type))
 		print('Launching RTP client')
-		ret = launchRTPClient(interface, local_port, stream_type)
+		ret = launchRTPClient(interface, local_port, stream_type, verbose=args.verbose, quiet=args.non_quiet)
 		print('RTP client returned {}'.format(ret))
 
 
