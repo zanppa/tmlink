@@ -14,6 +14,10 @@ TMLink builts upon known technologies, for example:
 TMLink is heavily inspired by Nokia's Terminal Mode and Car Connectivity Consortium's MirrorLink. 
 Some parts are implemented so that they may closely resemble the [ETSI standards TS 103 544](https://www.etsi.org/standards-search#page=1&search=103%20544&title=0&etsiNumber=1&content=0&version=0&onApproval=1&published=1&historical=1&startDate=1988-01-15&endDate=2017-10-11&harmonized=0&keyword=&TB=&stdType=&frequency=&mandate=&collection=&sort=1). 
 
+The current client version is close enough that it can operate some functions (e.g. screen sharing 
+and launching & terminating applications) from (some) Mirrorlink enabled phones. This works 
+at least on my Sony Xperia Z2 test device.
+
 ## Theory of operation
 Note that not everything described here is currently implemented (properly).
 
@@ -84,8 +88,8 @@ Some parts work with python 2.7 and some parts with python 3...
 
 ### Client requirements
 * [UPnPClient](https://github.com/flyte/upnpclient)
-* Gstreamer1.0, gstreamer1.0-tools, gstreamer1.0-plugins-base and gstreamer1.0-plugins-good
-* VNC client, I use [TigerVNC](https://tigervnc.org/)
+* VNC client that supports Mirrorlink pseudo encodings, e.g. [My Python VNC viewer](https://github.com/zanppa/python-vnc-viewer) which is included as submodule
+* Gstreamer1.0, gstreamer1.0-tools, gstreamer1.0-plugins-base and gstreamer1.0-plugins-good  (for RTP, i.e. Audio) support)
 
 
 ## Server status
@@ -137,7 +141,7 @@ Some parts work with python 2.7 and some parts with python 3...
 - [X] Can list applications
 - [X] Can launch applications
     - [X] Can launch VNC client for each individual VNC URI
-    -[ ] Can launch RTP client for each RTP stream URI
+    - [ ] Can launch RTP client for each RTP stream URI
 - [X] Can terminate applications
 
 ### RTP client
@@ -146,11 +150,11 @@ Some parts work with python 2.7 and some parts with python 3...
 - [X] Read UDP RTP stream and play
 
 ### VNC client
-- [X] Uses standard client
-- [ ] Terminal Mode extension in VNC client (WIP in separate repository)
+- [X] Can use standard client
+- [X] Terminal Mode extension in VNC client [In my Python VNC Viewer](https://github.com/zanppa/python-vnc-viewer)
 
 ## License
-Copyright (C) 2019 Lauri Peltonen
+Copyright (C) 2019, 2026 Lauri Peltonen
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
