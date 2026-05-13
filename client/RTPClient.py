@@ -36,6 +36,13 @@ def sendStartPacket(host, port, interface=None, local_port=0):
 	# Send single null byte (byte value is not specified)
 	sock.send(b'\00')
 
+	# Wait until we receive something
+	# According to spec, the 1 byte package must be sent until
+	# a single RTP packet is received
+	while not any(select.select([sock], [], [], 1)):	# 1 sec timeout
+		# Send single null byte (byte value is not specified)
+		sock.send(b'\00')
+
 	sock.close()
 
 	return (interface, port)
