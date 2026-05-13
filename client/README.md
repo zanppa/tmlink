@@ -2,11 +2,13 @@
 A very simple test client for TMLink.
 
 After the gadget is connected (I've used Raspberry PI Zero W) as ethernet gadget, 
-launch
+or an actual Mirrorlink compatible device (Sony Xperia Z2), launch
 ```
 sudo sh usb0_interface.sh
 ```
-to configure the local usb0 interface up and run dhclient on it.
+to configure the local usb0 interface up and run dhclient on it. Note: at least on 
+Devuan Excalibur the usb connection, after launching mirrorlink, automatically 
+launches DHCP client on it so this step is not needed!
 
 After that, launch
 ```
@@ -17,11 +19,11 @@ and then allows launching applications etc. on the server.
 
 This is very very preliminary for testing purposes only.
 
-Tested on Devuan Ascii.
+Tested on Devuan Excalibur.
 
 
 ## License
-Copyright (C) 2019 Lauri Peltonen
+Copyright (C) 2019, 2026 Lauri Peltonen
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
