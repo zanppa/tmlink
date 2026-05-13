@@ -12,6 +12,7 @@ from urllib.parse import urlparse
 # Launching clients
 import subprocess
 
+DEBUG = True
 
 
 timeout = 5
@@ -57,22 +58,26 @@ else:
 
 server = tmlinkServer[selectedServer]
 
+names = ['TmApplicationServer', 'TmApplicationServer1']
+server_name = next((k for k in names if k in server.service_map), None)
+
 # Sanity checks for the server
-if not 'TmApplicationServer' in server.service_map:
+if not server_name:
 	print('Application server not found')
 	sys.exit(-1)
 
+
 hasError = False
-if not 'GetApplicationList' in server.service_map['TmApplicationServer'].action_map:
+if not 'GetApplicationList' in server.service_map[server_name].action_map:
 	print('GetApplicationList not implemented in server')
 	hasError = True
-if not 'LaunchApplication' in server.service_map['TmApplicationServer'].action_map:
+if not 'LaunchApplication' in server.service_map[server_name].action_map:
 	print('LaunchApplication not implemented in server')
 	hasError = True
-if not 'TerminateApplication' in server.service_map['TmApplicationServer'].action_map:
+if not 'TerminateApplication' in server.service_map[server_name].action_map:
 	print('TerminateApplication not implemented in server')
 	hasError = True
-if not 'GetApplicationStatus' in server.service_map['TmApplicationServer'].action_map:
+if not 'GetApplicationStatus' in server.service_map[server_name].action_map:
 	print('GetApplicationStatus not implemented in server')
 	hasError = True
 
@@ -81,7 +86,8 @@ if hasError:
 	sys.exit(-1)
 
 # Query application list
-appListXML = server.service_map['TmApplicationServer'].GetApplicationList(AppListingFilter='', ProfileID=0)['AppListing']
+appListXML = server.service_map[server_name].GetApplicationList(AppListingFilter='', ProfileID=0)['AppListing']
+#print(appListXML)
 appList = ET.fromstring(appListXML)
 
 # Parse list of applications from XML
@@ -98,7 +104,7 @@ for app in apps:
 	if newApp['protocol'] == 'RTP':
 		newApp['format'] = app.find('./remotingInfo/format').text
 		dir = app.find('./remotingInfo/direction')
-		if dir:
+		if dir is not None:
 			newApp['direction'] = dir.text
 
 	applications.append(newApp)
@@ -136,7 +142,7 @@ while True:
 
 	if action == 0:
 		# Launch application
-		ret =server.service_map['TmApplicationServer'].LaunchApplication(AppID='{}'.format(applications[ID]['id']), ProfileID=0)
+		ret = server.service_map[server_name].LaunchApplication(AppID='{}'.format(applications[ID]['id']), ProfileID=0)
 		uri = ret['AppURI']
 		uri_part = urlparse(uri)
 
@@ -145,7 +151,8 @@ while True:
 			if (not uri in vnc_clients) or (vnc_clients[uri].poll() is not None):
 				# TODO: Bring the client forwards when the viewer already exists
 				# New URI or the existing client has terminated
-				cmd =['vncviewer', '{}::{}'.format(uri_part.hostname, uri_part.port)]
+				#cmd =['vncviewer', '--Log=*:stderr:100', '{}::{}'.format(uri_part.hostname, uri_part.port)]
+				cmd =['python', 'vncviewer/vncviewer_ml.py', '--host={}'.format(uri_part.hostname), '--display={}'.format(uri_part.port-5900)]
 				print('Launching: {}'.format(' '.join(x for x in cmd)))
 				proc = subprocess.Popen(cmd)
 				vnc_clients[uri] = proc
@@ -163,7 +170,7 @@ while True:
 
 	elif action == 1:
 		# Terminate application
-		print(server.service_map['TmApplicationServer'].TerminateApplication(AppID='{}'.format(applications[ID]['id']), ProfileID=0))
+		print(server.service_map[server_name].TerminateApplication(AppID='{}'.format(applications[ID]['id']), ProfileID=0))
 
 	elif action == 2:
 		print('Not implemented')
