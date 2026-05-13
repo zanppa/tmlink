@@ -1,0 +1,3 @@
+[submodule "client/vncviewer"]
+	path = client/vncviewer
+	url = https://github.com/zanppa/python-vnc-viewer.git
