@@ -14,12 +14,31 @@ After that, launch
 ```
 python3 Client.py
 ```
-which searches all interfaces for TMLink servers, and if found lists them, 
-and then allows launching applications etc. on the server.
+which searches all interfaces for TMLink servers. The interactive interface
+supports arrow-key navigation, Enter to select, Escape or `q` to go back, and
+scrolling through long server and application lists.
 
 This is very very preliminary for testing purposes only.
 
 Tested on Devuan Excalibur.
+
+## Python API
+
+`Client.py` exposes a `Server` class for one discovered TMLink server. Its
+`applications` collection contains `Application` objects created from the
+server's application list. VNC and RTP applications use the specialized
+`VNCApplication` and `RTPApplication` subclasses; unsupported protocols use
+`GenericApplication`.
+
+```python
+from Client import Server
+
+server = Server.discover(timeout=5)[0]
+application = server.get_application("0x00000001")
+application.launch()
+print(application.status())
+application.stop()
+```
 
 ## RTPClient
 
@@ -52,4 +71,3 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 This program is for INFORMATION PURPOSES ONLY. You use this at your own risk, author takes
 no responsibility for any loss or damage caused by using this program or any information
 presented.
-
