@@ -8,6 +8,7 @@ import argparse
 import socket
 import select
 import time
+import sys
 
 import subprocess
 
@@ -31,7 +32,6 @@ def sendStartPacket(host, port, interface=None, local_port=0):
 
     interface = sock.getsockname()[0]
     port = sock.getsockname()[1]
-    print(interface, port)
 
     # Send single null byte (byte value is not specified)
     sock.send(b'\00')
@@ -116,7 +116,7 @@ stream_types = {
 # Launch the RTP client. Blocks on success, returns client return code or None on error
 def launchRTPClient(interface, port, stream_type, verbose = False, quiet = True):
     if not stream_type in stream_types:
-        print('Unknown payload type: {}'.format(stream_type))
+        print('Unknown payload type: {}'.format(stream_type), file=sys.stderr)
         return None
 
     # Try to build the pipeline via GStreamer bindings
@@ -147,20 +147,21 @@ def launchRTPClient(interface, port, stream_type, verbose = False, quiet = True)
 
     except Exception as e:
         # If that fails, launch the "debuging app"
-        print('Could not build GST pipeline: {}'.format(e))
-        print('Trying gst-launch-1.0')
+        print('Could not build GST pipeline: {}'.format(e), file=sys.stderr)
+        print('Trying gst-launch-1.0', file=sys.stderr)
 
         # Launch gstreamer
         cmd = ['gst-launch-1.0']
         if verbose:
-            print('Verbose mode')
+            #print('Verbose mode')
             cmd.append('-v')
         if quiet:
-            print('Quiet mode')
+            #print('Quiet mode')
             cmd.extend(['-q', '--no-position'])
         cmd.extend(['udpsrc', 'port={}'.format(port), 'caps=\"{}\"'.format(stream_types[stream_type]), '!', 'rtpL16depay', '!', 'playsink'])
 
-        print(' '.join(x for x in cmd))
+        if verbose:
+            print(' '.join(x for x in cmd))
         return subprocess.call(cmd)
 
 
@@ -177,6 +178,7 @@ def main():
 
     host = args.host
     port = int(args.port)
+    verbose = args.verbose
 
     interface = args.interface
     local_port = args.local_port
@@ -187,12 +189,14 @@ def main():
 
     stream_type = args.stream_type or detectPayloadType(interface, local_port)
     if not stream_type:
-        print('Stream type was not detected, timeout')
+        print('Stream type was not detected, timeout', file=sys.stderr)
     else:
-        print('Payload type: {}'.format(stream_type))
-        print('Launching RTP client')
-        ret = launchRTPClient(interface, local_port, stream_type, verbose=args.verbose, quiet=args.non_quiet)
-        print('RTP client returned {}'.format(ret))
+        if verbose:
+            print('Payload type: {}'.format(stream_type))
+            print('Launching RTP client')
+        ret = launchRTPClient(interface, local_port, stream_type, verbose=verbose, quiet=args.non_quiet)
+        if verbose:
+            print('RTP client returned {}'.format(ret))
 
 
 
