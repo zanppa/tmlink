@@ -59,20 +59,20 @@ class RTPServer():
             print('Unknown payload (stream) type: {}'.format(type))
             return -1
 
-        print uri
+        print(uri)
         if self.socket and not self.clientAddress:
             readable, writable, exceptional = select.select([self.socket], [], [], timeout)
 
             if self.socket in readable:
                 if verbose:
-                    print 'Byte received from client'
+                    print('Byte received from client')
 
                 # Data received, read the byte and discard
                 data, addr = self.socket.recvfrom(1)
 
                 self.clientAddress = addr[0]
                 self.clientPort = addr[1]
-                print addr, self.clientAddress, self.clientPort
+                print(addr, self.clientAddress, self.clientPort)
 
                 # Close the socket
                 self.socket.close()
