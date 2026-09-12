@@ -35,7 +35,7 @@ class CommandThread(Thread):
     def run(self):
         while self.running:
             try:
-                command = 'command_' + raw_input('')
+                command = 'command_' + input('')
 
                 if hasattr(self, command):
                     getattr(self, command)()
