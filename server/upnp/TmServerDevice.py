@@ -53,13 +53,13 @@ class TmServerDevice(Device):
         self.uuid = '2fac1234-31f8-11b4-a222-08002b34c003'
 
         self.tmApplicationServer = TmApplicationServer()
-	self.tmNotificationServer = TmNotificationServer()
-	self.tmClientProfile = TmClientProfile()
+        self.tmNotificationServer = TmNotificationServer()
+        self.tmClientProfile = TmClientProfile()
 
         self.services = [
             self.tmApplicationServer,
-	    self.tmNotificationServer,
-	    self.tmClientProfile,
+            self.tmNotificationServer,
+            self.tmClientProfile,
         ]
 
         self.icons = [
@@ -73,13 +73,14 @@ class TmServerDevice(Device):
         #self.extras['X_presentations'] = 'TODO'  # Version 1.2 and forwards
 
         # Build version info
-        linkVersion = et.Element('X_mirrorLinkVersion')
+        ns = {'xmlns': 'urn:schemas-carconnectivity-org:ml-1-1'}
+        linkVersion = et.Element('X_mirrorLinkVersion', ns)
         major = make_element('majorVersion', '1')
         minor = make_element('minorVersion', '0')
         linkVersion.append(major)
         linkVersion.append(minor)
 
-	# TODO: Signature
+        # TODO: Signature
 
         # List additional elements
         self.extraElements = [linkVersion]
