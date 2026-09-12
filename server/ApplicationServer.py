@@ -241,7 +241,8 @@ class VNCApplication(Application):
 
 
 class RTPServerApplication(Application):
-    def __init__(self, host):
+    def __init__(self, host, audio_source='system', sink_name='tmlink_rtp_sink',
+                 gst_launch_fallback=False):
         #super(RTPApplication, self).__init__()
         Application.__init__(self, host)
 
@@ -254,11 +255,22 @@ class RTPServerApplication(Application):
         self.audioType = 'application'
         self.hasAppInfo = True
         self.uri = 'rtp://{}:{}'.format(self.host, self.port)
+        self.audio_source = audio_source
+        self.sink_name = sink_name
+        self.gst_launch_fallback = gst_launch_fallback
 
         #self.createXML()
 
     def launch(self):
-        return Application.launch(self, ['python', 'RTPServer.py', '--interface={}'.format(self.host), '--port={}'.format(self.port)])
+        command = [
+            'python', 'RTPServer.py',
+            '--interface={}'.format(self.host),
+            '--port={}'.format(self.port),
+            '--audio-source={}'.format(self.audio_source),
+            '--sink-name={}'.format(self.sink_name)]
+        if self.gst_launch_fallback:
+            command.append('--gst-launch-fallback')
+        return Application.launch(self, command)
 
 
 class RTPClientApplication(Application):
@@ -431,7 +443,8 @@ class ApplicationServer(dbus.service.Object):
 class DefaultApplicationList():
     """Simple list of default applications to present"""
 
-    def __init__(self, server, host_address):
+    def __init__(self, server, host_address, audio_source='system',
+                 sink_name='tmlink_rtp_sink', gst_launch_fallback=False):
         # Default VNC server
         self.VNCapp = VNCApplication(host_address)
         self.VNCapp.appCategory = '0xF0000001'	# Server functionality
@@ -442,7 +455,8 @@ class DefaultApplicationList():
         server.addApplication(self.VNCapp)
 
         # RTP server (audio out)
-        self.RTPserver = RTPServerApplication(host_address)
+        self.RTPserver = RTPServerApplication(
+            host_address, audio_source, sink_name, gst_launch_fallback)
         self.RTPserver.appCategory = '0xF0000001'	# Server functionality
         self.RTPserver.name = 'Audio out'
         self.RTPserver.audioType = 'all'
@@ -477,16 +491,26 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--interface', help='interface (address) to listen on', default='192.168.10.1')
     parser.add_argument('-k', '--kill', help='Kill applications when application server quits', action='store_true')
+    parser.add_argument('--audio-source', choices=('system', 'sink', 'alsa'),
+                        default='system',
+                        help='RTP source: default sink monitor, generated isolated sink, or ALSA device')
+    parser.add_argument('--sink-name', default='tmlink_rtp_sink',
+                        help='Name of the generated RTP PulseAudio/PipeWire sink')
+    parser.add_argument('--gst-launch-fallback', action='store_true',
+                        help='Allow RTPServer to fall back to gst-launch-1.0')
     args = parser.parse_args()
 
     interface = args.interface
+    print(interface)
     kill = args.kill
 
     # This must be run before connecting to the bus (i.e. creating the server)
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
     server = ApplicationServer(interface)
-    appList = DefaultApplicationList(server, interface)
+    appList = DefaultApplicationList(
+        server, interface, args.audio_source, args.sink_name,
+        args.gst_launch_fallback)
 
     # dbus_service = Session_DBus()
 

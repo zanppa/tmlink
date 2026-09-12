@@ -18,11 +18,21 @@ some UPnP implementations, I don't use those yet). See `configs/http/` for more 
 ## Running
 First you need to configure the ethernet gadget: `sudo sh create_gadget.sh´.
 
-If you want to use the RTP server for audio playback, you need to create the ALSA loopback device, 
-which should create a virtual sound card #1: 
-`sudo sh create_snd_loopback.sh`.
-Any local applications can play music to `hw:1,0,0` and record from `hw:1,0,1`. The first one will be sent 
-to client and any audio the client plays will be available in the latter.
+The RTP server uses GStreamer Python bindings by default. Its default source is the monitor of the
+system's default PulseAudio/PipeWire sink, so all audio sent to the normal speakers is transmitted.
+Start the server normally with `sh launch_servers.sh`. If the bindings are unavailable, the optional
+debug fallback can be enabled with:
+`sh launch_servers.sh` after adding `--gst-launch-fallback` to its `ApplicationServer.py` command.
+
+To transmit only audio explicitly routed to a separate sink, start the application server with
+`--audio-source=sink`. This creates a sink named `tmlink_rtp_sink`; select it as the output device
+in an application, or route an existing stream to it with tools such as `pavucontrol` or
+`pactl move-sink-input`. Only audio sent to that sink is transmitted. Note that to create the 
+sink, `pactl` is used which means you must have it installed.
+
+The legacy ALSA loopback source remains available with `--audio-source=alsa`. In that mode,
+`--device` selects the capture device (the old default is `hw:1,1,0`), and the loopback can be
+created with `sudo sh create_snd_loopback.sh`.
 
 Then, you can just launch the servers: `sh launch_servers.sh`. The ApplicationServer goes to background 
 and the UPnP server stays on foreground.
