@@ -60,10 +60,9 @@ class RTPServer():
         """Wait for packet to indicate destination address and port and start stream"""
 
         if not type in RESAMPLE or not type in PAYLOADS:
-            print('Unknown payload (stream) type: {}'.format(type))
+            print('Unknown payload (stream) type: {}'.format(type), file=sys.stderr)
             return -1
 
-        print(uri)
         if self.socket and not self.clientAddress:
             readable, writable, exceptional = select.select([self.socket], [], [], timeout)
 
@@ -76,14 +75,15 @@ class RTPServer():
 
                 self.clientAddress = addr[0]
                 self.clientPort = addr[1]
-                print(addr, self.clientAddress, self.clientPort)
+                if verbose:
+                    print('Client connection from {} to {}:{}'.format(addr, self.clientAddress, self.clientPort))
 
                 # Close the socket
                 self.socket.close()
 
                 return self._run_pipeline(type, stream_port, verbose)
 
-        print('Timeout waiting for connection')
+        print('RTP server error! Timeout waiting for connection', file=sys.stderr)
         return -1
 
     def _source_pipeline(self):
