@@ -11,6 +11,14 @@ from urllib.parse import urlparse
 import upnpclient
 
 
+class _ApplicationConnection:
+    """A local protocol client shared by applications with the same URI."""
+
+    def __init__(self, process):
+        self.process = process
+        self.applications = set()
+
+
 class Server:
     """UPnP application server and the applications it exposes."""
 
@@ -27,6 +35,7 @@ class Server:
         self.profile_id = profile_id
         self.service = self._find_application_service()
         self.applications = {}
+        self._connections = {}
 
         missing = [
             action for action in self.REQUIRED_ACTIONS
@@ -40,6 +49,7 @@ class Server:
             )
 
         self.refresh_applications()
+
 
     @classmethod
     def discover(cls, timeout=5, profile_id=0):
@@ -59,6 +69,12 @@ class Server:
         if service_name is None:
             raise RuntimeError("Application server service not found")
         return self.device.service_map[service_name]
+
+    def get_description(self):
+        """Return interesting server (device) information"""
+        if not self.device:
+            return None
+        return (self.friendly_name, self.manufacturer)
 
     def refresh_applications(self):
         """Fetch and parse the application list from the server."""
@@ -107,6 +123,46 @@ class Server:
         )
         return response.get("AppStatus", response)
 
+    def acquire_connection(self, uri, application):
+        """Reuse a running local client for a previously opened application URI."""
+        if not uri:
+            return None
+
+        connection = self._connections.get(uri)
+        if connection is None:
+            return None
+        if connection.process.poll() is not None:
+            self._connections.pop(uri, None)
+            return None
+
+        connection.applications.add(application)
+        return connection.process
+
+    def register_connection(self, uri, application, process):
+        """Track a newly opened local client connection."""
+        if not uri:
+            return
+
+        connection = _ApplicationConnection(process)
+        connection.applications.add(application)
+        self._connections[uri] = connection
+
+    def release_connection(self, uri, application):
+        """Release an application's reference and stop an unused local client."""
+        connection = self._connections.get(uri)
+        if connection is None:
+            return False
+
+        connection.applications.discard(application)
+        if connection.applications:
+            return False
+
+        self._connections.pop(uri, None)
+        if connection.process.poll() is None:
+            connection.process.terminate()
+            return True
+        return False
+
     def stop_all(self):
         """Stop all locally launched application clients."""
         for app in self.applications.values():
@@ -140,6 +196,7 @@ class Application:
             self.protocol = protocol
         self.metadata = metadata or {}
         self.process = None
+        self.connection_uri = None
         self.server_running = False
         self.run_status = "Unknown"
 
@@ -175,8 +232,15 @@ class Application:
 
         self.uri = self.server.launch_application(self.app_id)
         self.server_running = True
+        self.process = self.server.acquire_connection(self.uri, self)
+        if self.process is not None:
+            self.connection_uri = self.uri
+            return self.uri
+
         try:
             self.process = self._launch_client()
+            self.connection_uri = self.uri
+            self.server.register_connection(self.uri, self, self.process)
         except (OSError, ValueError, NotImplementedError):
             self.server.terminate_application(self.app_id)
             self.server_running = False
@@ -187,10 +251,13 @@ class Application:
         """Stop the local client and then terminate the server application."""
         stopped = False
         if self.process is not None:
-            if self.process.poll() is None:
+            if self.connection_uri is not None:
+                stopped = self.server.release_connection(self.connection_uri, self)
+            elif self.process.poll() is None:
                 self.process.terminate()
                 stopped = True
             self.process = None
+            self.connection_uri = None
 
         termination_result = False
         if self.server_running:
@@ -278,29 +345,6 @@ class GenericApplication(Application):
         )
 
 
-def select_server(servers):
-    """Select one server interactively."""
-    if not servers:
-        return None
-    if len(servers) == 1:
-        print("Using server {}".format(servers[0].device.location))
-        return servers[0]
-
-    print("Select server to use")
-    for number, server in enumerate(servers):
-        print("{:02d}: {}".format(number, server.device.location))
-
-    while True:
-        try:
-            selected = int(input("> "))
-        except (TypeError, ValueError):
-            print("Erroneous selection, give number")
-            continue
-        if 0 <= selected < len(servers):
-            return servers[selected]
-        print("Give number between 0 and {}".format(len(servers) - 1))
-
-
 def _menu(stdscr, title, items, status=""):
     """Display a scrollable menu and return the selected item index."""
     selected = 0
@@ -375,20 +419,21 @@ def _run_curses(stdscr, servers):
     curses.curs_set(0)
     stdscr.keypad(True)
 
-    if len(servers) == 1:
-        server = servers[0]
-    else:
-        server_index = _menu(
-            stdscr,
-            "Select TMLink server",
-            [server.device.location for server in servers],
-        )
-        if server_index is None:
-            return
-        server = servers[server_index]
-
-    status = "Select an application"
     while True:
+        if len(servers) == 1:
+            server = servers[0]
+        else:
+            server_index = _menu(
+                stdscr,
+                "Select TMLink server",
+                ["{}, {} ({})".format(server.device.friendly_name, server.device.manufacturer, server.device.location) for server in servers],
+            )
+            if server_index is None:
+                return
+            server = servers[server_index]
+
+        status = "Select an application"
+
         applications = list(server.applications.values())
         app_index = _menu(
             stdscr,
@@ -400,7 +445,10 @@ def _run_curses(stdscr, servers):
             status,
         )
         if app_index is None:
-            return
+            if len(servers) == 1:
+                return
+            else:
+                continue
 
         app = applications[app_index]
         action_index = _menu(
