@@ -201,7 +201,7 @@ class Application:
 
         # TODO: Should be possible to run app multiple times under different profiles, show status of all
         stat = SubElement(self.xmlStatus, 'status')
-        SubElement(stat, 'profileID').text = 0	# TODO: Correct profile ID
+        SubElement(stat, 'profileID').text = b'0'	# TODO: Correct profile ID
         SubElement(stat, 'statusType').text = self.status
 
         return self.xmlStatus
@@ -417,13 +417,13 @@ class ApplicationServer(dbus.service.Object):
 
         if appID == '*':         # Wildcard, show status of all apps
             for id in self.apps:
-                statusList.append(self.apps[id].getStatus())
+                self.statusList.append(self.apps[id].getStatus())
         else: # Show status of one app only
             appID = int(appID, 16)
             if appID in self.apps:
-                statusList.append(self.apps[appID].getStatus())
+                self.statusList.append(self.apps[appID].getStatus())
 
-        return ElementTree.tostring(statusList, encoding='UTF-8', method='xml', xml_declaration=True)
+        return ElementTree.tostring(self.statusList, encoding='UTF-8', method='xml', xml_declaration=True)
 
 
 
