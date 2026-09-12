@@ -13,188 +13,188 @@ import subprocess
 
 # Send a single byte start packet to the host
 def sendStartPacket(host, port, interface=None, local_port=0):
-	if not interface:
-		interface = '0.0.0.0'
+    if not interface:
+        interface = '0.0.0.0'
 
-	if not local_port:
-		local_port = 0
+    if not local_port:
+        local_port = 0
 
-	# Do an UDP "connect" to resolve the interface (and random port)
-	try:
-		sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-		sock.bind((interface, local_port))
-		sock.connect((host, port))
-	except:
-		print('Could not open socket or remote host unreachable on given (or any) interface')
-		sock.close()
-		return (None, None)
+    # Do an UDP "connect" to resolve the interface (and random port)
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.bind((interface, local_port))
+        sock.connect((host, port))
+    except:
+        print('Could not open socket or remote host unreachable on given (or any) interface')
+        sock.close()
+        return (None, None)
 
-	interface = sock.getsockname()[0]
-	port = sock.getsockname()[1]
-	print(interface, port)
+    interface = sock.getsockname()[0]
+    port = sock.getsockname()[1]
+    print(interface, port)
 
-	# Send single null byte (byte value is not specified)
-	sock.send(b'\00')
+    # Send single null byte (byte value is not specified)
+    sock.send(b'\00')
 
-	# Wait until we receive something
-	# According to spec, the 1 byte package must be sent until
-	# a single RTP packet is received
-	while not any(select.select([sock], [], [], 1)):	# 1 sec timeout
-		# Send single null byte (byte value is not specified)
-		sock.send(b'\00')
+    # Wait until we receive something
+    # According to spec, the 1 byte package must be sent until
+    # a single RTP packet is received
+    while not any(select.select([sock], [], [], 1)):    # 1 sec timeout
+        # Send single null byte (byte value is not specified)
+        sock.send(b'\00')
 
-	sock.close()
+    sock.close()
 
-	return (interface, port)
+    return (interface, port)
 
 
 # Try to detect RTP payload type, return payload (int) or None on error
 def detectPayloadType(interface, port, timeout=5, packets=0):
-	# Create UDP socket
-	try:
-		sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-		sock.bind((interface, port))
-		sock.settimeout(timeout)
-	except:
-		# TODO: Better error handler if port/interface error?
-		print('Error opening socket')
-		return None
+    # Create UDP socket
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.bind((interface, port))
+        sock.settimeout(timeout)
+    except:
+        # TODO: Better error handler if port/interface error?
+        print('Error opening socket')
+        return None
 
-	payload = None
-	selectedPayload = None
+    payload = None
+    selectedPayload = None
 
-	timeout += time.time()
-	while True:
-		recv = select.select([sock], [], [], 1)	# 1 sec timeout
-		if any(recv):
-			try:
-				data, address = sock.recvfrom(1024)	# TODO: How many bytes??
-			except socket.timeout:
-				print('Receive timeout')
-				return None
+    timeout += time.time()
+    while True:
+        recv = select.select([sock], [], [], 1)    # 1 sec timeout
+        if any(recv):
+            try:
+                data, address = sock.recvfrom(1024)    # TODO: How many bytes??
+            except socket.timeout:
+                print('Receive timeout')
+                return None
 
-			# Figure out the RTP stream type
-			# The payload (stream type) is the low 7 bits of 2nd byte
-			oldPayload = payload
-			#payload = ord(data[1]) & 0x7F
-			payload = data[1] & 0x7F
+            # Figure out the RTP stream type
+            # The payload (stream type) is the low 7 bits of 2nd byte
+            oldPayload = payload
+            #payload = ord(data[1]) & 0x7F
+            payload = data[1] & 0x7F
 
-			if payload != oldPayload:
-				votes = 1	# Require X times the same value to be sure
-			else:
-				votes += 1
+            if payload != oldPayload:
+                votes = 1    # Require X times the same value to be sure
+            else:
+                votes += 1
 
-			if votes > packets:
-				selectedPayload = payload
-			#selectedPayload = payload
+            if votes > packets:
+                selectedPayload = payload
+            #selectedPayload = payload
 
-			if selectedPayload is not None:
-				break
+            if selectedPayload is not None:
+                break
 
-			if time.time() > timeout:
-				break
+            if time.time() > timeout:
+                break
 
-	if sock:
-		sock.close()
+    if sock:
+        sock.close()
 
-	return selectedPayload
+    return selectedPayload
 
 
 
 stream_types = {
-	# 16 bit, 48 kHz, mono
-	98: 'application/x-rtp, media=audio, format=S16LE, clock-rate=48000, channels=1, payload=98',
+    # 16 bit, 48 kHz, mono
+    98: 'application/x-rtp, media=audio, format=S16LE, clock-rate=48000, channels=1, payload=98',
 
-	# 16 bit, 48 kHz, stereo
-	99: 'application/x-rtp, media=audio, format=S32LE, layout=interleaved, clock-rate=48000, channels=2, payload=99',
+    # 16 bit, 48 kHz, stereo
+    99: 'application/x-rtp, media=audio, format=S32LE, layout=interleaved, clock-rate=48000, channels=2, payload=99',
 
-	# 16 bit, 16 kHz, mono
-	100: 'application/x-rtp, media=audio, format=S16LE, layout=interleaved, clock-rate=16000, channels=1, payload=100',
+    # 16 bit, 16 kHz, mono
+    100: 'application/x-rtp, media=audio, format=S16LE, layout=interleaved, clock-rate=16000, channels=1, payload=100',
 }
 
 
 # Launch the RTP client. Blocks on success, returns client return code or None on error
 def launchRTPClient(interface, port, stream_type, verbose = False, quiet = True):
-	if not stream_type in stream_types:
-		print('Unknown payload type: {}'.format(stream_type))
-		return None
+    if not stream_type in stream_types:
+        print('Unknown payload type: {}'.format(stream_type))
+        return None
 
-	# Try to build the pipeline via GStreamer bindings
-	try:
-		import gi
-		gi.require_version('Gst', '1.0')
-		from gi.repository import Gst, GObject
+    # Try to build the pipeline via GStreamer bindings
+    try:
+        import gi
+        gi.require_version('Gst', '1.0')
+        from gi.repository import Gst, GObject
 
-		Gst.init(None)
+        Gst.init(None)
 
-		# Create the pipeline
-		pipeline_str = 'udpsrc port={} caps=\"{}\" ! rtpL16depay ! playsink'.format(port, stream_types[stream_type])
-		pipeline = Gst.parse_launch(pipeline_str)
-		pipeline.set_state(Gst.State.PLAYING)
+        # Create the pipeline
+        pipeline_str = 'udpsrc port={} caps=\"{}\" ! rtpL16depay ! playsink'.format(port, stream_types[stream_type])
+        pipeline = Gst.parse_launch(pipeline_str)
+        pipeline.set_state(Gst.State.PLAYING)
 
-		# Listen for messages
-		bus = pipeline.get_bus()
-		terminate = False
-		while not terminate:
-			msg = bus.timed_pop_filtered(Gst.SECOND, Gst.MessageType.ERROR | Gst.MessageType.EOS)
-			if not msg:
-				continue
-			# Only error or end-of-stream messages should get this far -> they terminate
-			terminate = True
-		pipeline.set_state(Gst.State.NULL)
-		return 0
+        # Listen for messages
+        bus = pipeline.get_bus()
+        terminate = False
+        while not terminate:
+            msg = bus.timed_pop_filtered(Gst.SECOND, Gst.MessageType.ERROR | Gst.MessageType.EOS)
+            if not msg:
+                continue
+            # Only error or end-of-stream messages should get this far -> they terminate
+            terminate = True
+        pipeline.set_state(Gst.State.NULL)
+        return 0
 
 
-	except Exception as e:
-		# If that fails, launch the "debuging app"
-		print('Could not build GST pipeline: {}'.format(e))
-		print('Trying gst-launch-1.0')
+    except Exception as e:
+        # If that fails, launch the "debuging app"
+        print('Could not build GST pipeline: {}'.format(e))
+        print('Trying gst-launch-1.0')
 
-		# Launch gstreamer
-		cmd = ['gst-launch-1.0']
-		if verbose:
-			print('Verbose mode')
-			cmd.append('-v')
-		if quiet:
-			print('Quiet mode')
-			cmd.extend(['-q', '--no-position'])
-		cmd.extend(['udpsrc', 'port={}'.format(port), 'caps=\"{}\"'.format(stream_types[stream_type]), '!', 'rtpL16depay', '!', 'playsink'])
+        # Launch gstreamer
+        cmd = ['gst-launch-1.0']
+        if verbose:
+            print('Verbose mode')
+            cmd.append('-v')
+        if quiet:
+            print('Quiet mode')
+            cmd.extend(['-q', '--no-position'])
+        cmd.extend(['udpsrc', 'port={}'.format(port), 'caps=\"{}\"'.format(stream_types[stream_type]), '!', 'rtpL16depay', '!', 'playsink'])
 
-		print(' '.join(x for x in cmd))
-		return subprocess.call(cmd)
+        print(' '.join(x for x in cmd))
+        return subprocess.call(cmd)
 
 
 def main():
-	parser = argparse.ArgumentParser(description='RTP client launcher')
-	parser.add_argument('host', help='Remote host address')
-	parser.add_argument('port', help='Remote host port')
-	parser.add_argument('-i', '--interface', type=str, help='Force network interface (IP) to use (default=auto)', default=None)
-	parser.add_argument('-p', '--local_port', type=int, help='Force local port to use (default=random)', default=0)
-	parser.add_argument('-t', '--stream_type', type=int, help='Define stream type (e.g. 99) instead of autodetecting', default=0)
-	parser.add_argument('-v', '--verbose', help='Verbose output', action='store_true')
-	parser.add_argument('-q', '--non-quiet', help='Non-quiet mode, output normal amount of text', action='store_false')
-	args = parser.parse_args()
+    parser = argparse.ArgumentParser(description='RTP client launcher')
+    parser.add_argument('host', help='Remote host address')
+    parser.add_argument('port', help='Remote host port')
+    parser.add_argument('-i', '--interface', type=str, help='Force network interface (IP) to use (default=auto)', default=None)
+    parser.add_argument('-p', '--local_port', type=int, help='Force local port to use (default=random)', default=0)
+    parser.add_argument('-t', '--stream_type', type=int, help='Define stream type (e.g. 99) instead of autodetecting', default=0)
+    parser.add_argument('-v', '--verbose', help='Verbose output', action='store_true')
+    parser.add_argument('-q', '--non-quiet', help='Non-quiet mode, output normal amount of text', action='store_false')
+    args = parser.parse_args()
 
-	host = args.host
-	port = int(args.port)
+    host = args.host
+    port = int(args.port)
 
-	interface = args.interface
-	local_port = args.local_port
+    interface = args.interface
+    local_port = args.local_port
 
-	(interface, local_port) = sendStartPacket(host, port, interface, local_port)
-	if not interface:
-		return
+    (interface, local_port) = sendStartPacket(host, port, interface, local_port)
+    if not interface:
+        return
 
-	stream_type = args.stream_type or detectPayloadType(interface, local_port)
-	if not stream_type:
-		print('Stream type was not detected, timeout')
-	else:
-		print('Payload type: {}'.format(stream_type))
-		print('Launching RTP client')
-		ret = launchRTPClient(interface, local_port, stream_type, verbose=args.verbose, quiet=args.non_quiet)
-		print('RTP client returned {}'.format(ret))
+    stream_type = args.stream_type or detectPayloadType(interface, local_port)
+    if not stream_type:
+        print('Stream type was not detected, timeout')
+    else:
+        print('Payload type: {}'.format(stream_type))
+        print('Launching RTP client')
+        ret = launchRTPClient(interface, local_port, stream_type, verbose=args.verbose, quiet=args.non_quiet)
+        print('RTP client returned {}'.format(ret))
 
 
 
 if __name__ == '__main__':
-	main()
+    main()
