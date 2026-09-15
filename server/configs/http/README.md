@@ -1,24 +1,42 @@
 # HTTP Server
 
-## Introduction
-HTTP server is used to serve e.g. icons and other static content.
+The preferred HTTP server is the standalone Python service included in the
+server directory. It uses only the Python standard library and is independent
+of both the application server and the UPnP server.
 
-## Installation
-`sudo apt-get install webfs`
+## Built-in Python server
 
-Also we need to create a base directory, default in Raspbian is:
-`/var/www/html`
+Static files are kept in `server/http/`. Add icons under that directory, then
+start the service from `server/`:
 
-Run
-```
-sudo mkdir -p /var/www/html
-sudo chown -R www-data.www-data /var/www
+```sh
+sh launch_http.sh
 ```
 
-## Configuration
-The default configuration is almost good, we just change that the server 
-binds to the USB interface.
+The defaults serve `server/http/` on `192.168.10.1:8000`. The bind address,
+port, and document root can be overridden with command-line options:
 
-Copy/merge the included `webfsd.conf` to `/etc/webfsd.conf`. Note: at this 
-point the server binds to all interfaces, this will change later.
+```sh
+python3 http_server.py \
+    --bind 192.168.10.1 \
+    --port 8000 \
+    --root http
+```
 
+The launcher also accepts the `TMLINK_HTTP_BIND`, `TMLINK_HTTP_PORT`, and
+`TMLINK_HTTP_ROOT` environment variables. It serves files using HTTP `GET`
+and `HEAD`, rejects directory listings and write methods, and should be bound
+to the USB-network address rather than all interfaces.
+
+For example, the UPnP device icon URL can be:
+
+```text
+http://192.168.10.1:8000/icon.png
+```
+
+## Alternative: webfsd
+
+The existing `webfsd.conf` is retained as an alternative for installations
+that already use the external `webfs` package. It is no longer the
+recommended setup; the built-in Python server avoids an additional package
+and keeps the static-file service in the TMLink server tree.
