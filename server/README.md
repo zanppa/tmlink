@@ -12,8 +12,10 @@ you can also change things to use the RNDIS gadget.
 
 Install and configure a DHCP server. See `configs/dhcp/` for more info.
 
-Optional: Install and configure http server if you want to serve icons (which may be supported by 
-some UPnP implementations, I don't use those yet). See `configs/http/` for more info.
+Optional: start the standalone Python HTTP server if you want to serve icons
+or other static content. Put files in `http/` and run `sh launch_http.sh`.
+See `configs/http/` for configuration details. The old `webfsd` configuration
+is retained there as an alternative, but is no longer the recommended setup.
 
 ## Running
 First you need to configure the ethernet gadget: `sudo sh create_gadget.sh´.
@@ -34,8 +36,35 @@ The legacy ALSA loopback source remains available with `--audio-source=alsa`. In
 `--device` selects the capture device (the old default is `hw:1,1,0`), and the loopback can be
 created with `sudo sh create_snd_loopback.sh`.
 
-Then, you can just launch the servers: `sh launch_servers.sh`. The ApplicationServer goes to background 
-and the UPnP server stays on foreground.
+## Configured applications
+
+The current built-in `DefaultApplicationList` remains the default when no
+configuration is supplied. To create applications from a TOML file instead,
+copy `config.example.toml`, edit it, and start:
+
+```sh
+python3 ApplicationServer.py --config config.toml --interface 192.168.10.1 --kill
+```
+
+Configured mode creates VNC and RTP output-server targets by default. Set a
+target's `enabled = false` to disable it. Additional VNC or RTP targets can be
+defined under `[targets.<name>]`. Applications select a target and provide
+either a `command` array or an `executable` plus `arguments`.
+
+Command and environment values support placeholders such as `{host}`,
+`{vnc_uri}`, `{rtp_uri}`, `{port}`, `{display_number}`, `{config_dir}`,
+`{sink_name}`, and `{audio_source}`. Target-specific values such as
+`{rtp_sink_name}` are also available. This allows media players to use the
+configured PulseAudio/PipeWire sink or RTP input device without hard-coded
+values.
+
+Python 3.11 or newer provides TOML parsing through the standard library. On
+older Python versions, install the compatible `tomli` package.
+
+Then, you can just launch the servers: `sh launch_servers.sh`. The
+ApplicationServer goes to background and the UPnP server stays on foreground.
+The HTTP server, when needed, is started independently with
+`sh launch_http.sh`.
 
 Now this should work with the client after plugging the gadget in.
 
