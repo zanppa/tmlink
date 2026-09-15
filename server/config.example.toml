@@ -1,0 +1,58 @@
+# Optional protocol infrastructure. Both targets are enabled by default.
+# Set enabled = false to disable one of the built-in targets.
+
+[targets.vnc]
+enabled = true
+screen = 1
+port = 5901
+name = "VNC"
+
+[targets.rtp]
+enabled = true
+port = 12345
+audio_source = "system"
+sink_name = "tmlink_rtp_sink"
+gst_launch_fallback = false
+name = "Audio out"
+direction = "out"
+
+# An RTP input target can be added explicitly when the gadget should receive
+# audio. It is not created by default.
+# [targets.rtp_input]
+# enabled = true
+# protocol = "RTP"
+# direction = "in"
+# port = 12346
+# sink_device = "hw:1,1,1"
+
+[[applications]]
+name = "Text editor"
+protocol = "VNC"
+target = "vnc"
+command = ["gnome-text-editor"]
+display = "{vnc_display}"
+description = "Text editor running on the configured VNC display"
+iconURL = "http://{host}:8000/applications/text-editor.png"
+iconWidth = 48
+iconHeight = 48
+iconDepth = 24
+
+[[applications]]
+name = "Music player"
+protocol = "RTP"
+target = "rtp"
+executable = "my-player"
+arguments = ["--audio-sink", "{rtp_sink_name}"]
+environment = { PULSE_SINK = "{rtp_sink_name}" }
+direction = "out"
+audioType = "all"
+iconURL = "http://{host}:8000/applications/music.png"
+iconWidth = 48
+iconHeight = 48
+iconDepth = 24
+
+# Available placeholders include:
+# {host}, {uri}, {vnc_uri}, {rtp_uri}, {port}, {display},
+# {display_number}, {vnc_display}, {rtp_port}, {config_dir},
+# {sink_name}, {audio_source}, {sink_device}, {stream_type}.
+# Target-specific values are also available, such as {rtp_sink_name}.

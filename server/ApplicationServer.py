@@ -22,9 +22,6 @@ import dbus.service
 import dbus.mainloop.glib
 from gi.repository import GLib
 
-# YAML for configuration files
-#import yaml
-
 # List of remoting protocols
 ApplicationProtocols = [
     'VNC',    # VNC => Video
@@ -70,6 +67,7 @@ class Application:
         self.xmlString = ''
 
         self.name = 'Test Application'
+        self.description = None
 
         self.host = host
 
@@ -99,6 +97,11 @@ class Application:
         self.resourceStatus = 'free' # free, busy or NA, is the app available. If None, not printed
         #self.signature = 'xx'       # Not implemented in 1.0
 
+        self.iconURL = None
+        self.iconWidth = None
+        self.iconHeight = None
+        self.iconDepth = None
+
         self.uri = ''	# Uri to access the application
 
         self.status = 'Notrunning'  # Notrunning, Foreground, Background
@@ -119,6 +122,9 @@ class Application:
             SubElement(chRemoting, 'direction').text = self.direction
         self.xmlTree.append(chRemoting)
 
+        if self.description:
+            SubElement(self.xmlTree, 'description').text = self.description
+
         if self.hasAppInfo:
             chAppInfo = Element('appInfo')
             SubElement(chAppInfo, 'appCategory').text = self.appCategory
@@ -136,6 +142,17 @@ class Application:
             SubElement(chAudio, 'audioType').text = self.audioType
             SubElement(chAudio, 'contentCategory').text = self.audioCategory
             self.xmlTree.append(chAudio)
+
+        if self.iconURL:
+            chIcon = Element('icon')
+            SubElement(chIcon, 'url').text = self.iconURL
+            if self.iconWidth is not None:
+                SubElement(chIcon, 'width').text = str(self.iconWidth)
+            if self.iconHeight is not None:
+                SubElement(chIcon, 'height').text = str(self.iconHeight)
+            if self.iconDepth is not None:
+                SubElement(chIcon, 'depth').text = str(self.iconDepth)
+            self.xmlTree.append(chIcon)
 
         if self.resourceStatus:
             SubElement(self.xmlTree, 'resourceStatus').text = self.resourceStatus
@@ -210,7 +227,7 @@ class Application:
 class VNCApplication(Application):
     vncScreen = 1
 
-    def __init__(self, host):
+    def __init__(self, host, screen_id=None, port=None):
         #super(VNCApplication, self).__init__(host)
         Application.__init__(self, host)
 
@@ -220,11 +237,16 @@ class VNCApplication(Application):
         self.hasAppInfo = True
 
         # Select next free screen number
-        self.screenID = VNCApplication.vncScreen
-        VNCApplication.vncScreen += 1
+        if screen_id is None:
+            self.screenID = VNCApplication.vncScreen
+            VNCApplication.vncScreen += 1
+        else:
+            self.screenID = int(screen_id)
+            if self.screenID >= VNCApplication.vncScreen:
+                VNCApplication.vncScreen = self.screenID + 1
 
         # Select port
-        self.port = 5900 + self.screenID
+        self.port = 5900 + self.screenID if port is None else int(port)
 
         self.uri = 'vnc://{}:{}'.format(self.host, self.port)
 
@@ -242,11 +264,11 @@ class VNCApplication(Application):
 
 class RTPServerApplication(Application):
     def __init__(self, host, audio_source='system', sink_name='tmlink_rtp_sink',
-                 gst_launch_fallback=False):
+                 gst_launch_fallback=False, port=12345):
         #super(RTPApplication, self).__init__()
         Application.__init__(self, host)
 
-        self.port = 12345	# TODO: Change to correct one
+        self.port = int(port)
 
         self.protocolID = 'RTP'
         self.format = '99'
@@ -274,11 +296,12 @@ class RTPServerApplication(Application):
 
 
 class RTPClientApplication(Application):
-    def __init__(self, host):
+    def __init__(self, host, port=12346, stream_type=None,
+                 sink_device='hw:1,1,1'):
         #super(RTPApplication, self).__init__()
         Application.__init__(self, host)
 
-        self.port = 12346	# TODO: Change to correct one
+        self.port = int(port)
 
         self.protocolID = 'RTP'
         self.format = '99'
@@ -288,16 +311,28 @@ class RTPClientApplication(Application):
         self.hasAppInfo = True
         self.uri = 'rtp://{}:{}'.format(self.host, self.port)
 
-        self.stream_type = 'application/x-rtp, media=audio, format=S32LE, layout=interleaved, clock-rate=48000, channels=2, payload=99'
+        self.stream_type = stream_type or (
+            'application/x-rtp, media=audio, format=S32LE, '
+            'layout=interleaved, clock-rate=48000, channels=2, payload=99')
+        self.sink_device = sink_device
 
         #self.createXML()
 
     def launch(self):
-        return Application.launch(self, ['gst-launch-1.0', 'udpsrc', 'port={}'.format(self.port), 'caps=\"{}\"'.format(self.stream_type), '!', 'rtpL16depay', '!', 'alsasink device=hw:1,1,1'])
+        return Application.launch(self, [
+            'gst-launch-1.0',
+            'udpsrc',
+            'port={}'.format(self.port),
+            'caps=\"{}\"'.format(self.stream_type),
+            '!',
+            'rtpL16depay',
+            '!',
+            'alsasink device={}'.format(self.sink_device),
+        ])
 
 
 class GenericApplication(Application):
-    def __init__(self, command, uri, display=1):
+    def __init__(self, command, uri, display=1, environment=None):
         Application.__init__(self)
 
         self.hasDisplay = True
@@ -306,10 +341,14 @@ class GenericApplication(Application):
         self.command = command
         self.uri = uri
         self.display = display
+        self.environment = environment
 
     def launch(self):
         env = os.environ.copy()
-        env['DISPLAY'] = ':{}'.format(self.display)  # Which display to use
+        if self.display is not None:
+            env['DISPLAY'] = ':{}'.format(self.display)
+        if self.environment:
+            env.update(self.environment)
         return Application.launch(self, self.command, env)
 
 
@@ -491,6 +530,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--interface', help='interface (address) to listen on', default='192.168.10.1')
     parser.add_argument('-k', '--kill', help='Kill applications when application server quits', action='store_true')
+    parser.add_argument('--config', help='TOML application configuration file')
     parser.add_argument('--audio-source', choices=('system', 'sink', 'alsa'),
                         default='system',
                         help='RTP source: default sink monitor, generated isolated sink, or ALSA device')
@@ -508,9 +548,13 @@ def main():
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
     server = ApplicationServer(interface)
-    appList = DefaultApplicationList(
-        server, interface, args.audio_source, args.sink_name,
-        args.gst_launch_fallback)
+    if args.config:
+        from ConfiguredApplicationList import ConfiguredApplicationList
+        appList = ConfiguredApplicationList(server, interface, args.config)
+    else:
+        appList = DefaultApplicationList(
+            server, interface, args.audio_source, args.sink_name,
+            args.gst_launch_fallback)
 
     # dbus_service = Session_DBus()
 
